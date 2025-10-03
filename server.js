@@ -7,9 +7,18 @@ dotenv.config();
 
 const app = express();
 
-// Configuración de servicios desde variables de entorno
-const CLIENTE_API = process.env.CLIENTE_API || "http://localhost:3000";
-const PAGOS_API = process.env.PAGOS_API || "http://localhost:3001";
+// ----------------------
+// Variables de entorno
+// ----------------------
+const CLIENTE_API = process.env.CLIENTE_API;
+const PAGOS_API = process.env.PAGOS_API;
+const ADMIN_API = process.env.ADMIN_API;
+const LOGIN_API = process.env.LOGIN_API;
+
+// ----------------------
+// Middleware para parsing JSON
+// ----------------------
+app.use(express.json());
 
 // ----------------------
 // API CLIENTES
@@ -20,7 +29,11 @@ app.use(
     target: CLIENTE_API,
     changeOrigin: true,
     pathRewrite: {
-      "^/api/clientes": "/api/v1", // elimina /api/clientes y agrega /api/v1 para la API cliente
+      "^/api/clientes": "", // elimina /api/clientes, pasa directo a la API real
+    },
+    onError: (err, req, res) => {
+      console.error("Error proxy clientes:", err.message);
+      res.status(500).json({ error: "No se pudo conectar con la API de clientes" });
     },
   })
 );
@@ -28,28 +41,61 @@ app.use(
 // ----------------------
 // API PAGOS
 // ----------------------
-// Rutas hacia la API de pagos
 app.use(
   "/api/pagos",
   createProxyMiddleware({
     target: PAGOS_API,
     changeOrigin: true,
     pathRewrite: { "^/api/pagos": "" },
-    proxyTimeout: 30000, // 30 segundos máximo de espera
-    timeout: 30000,
     onError: (err, req, res) => {
-      console.error("Error en proxy de pagos:", err.message);
-      res.status(500).json({ error: "Error al conectar con API de pagos" });
+      console.error("Error proxy pagos:", err.message);
+      res.status(500).json({ error: "No se pudo conectar con la API de pagos" });
     },
   })
 );
 
+// ----------------------
+// API ADMIN
+// ----------------------
+app.use(
+  "/api/admin",
+  createProxyMiddleware({
+    target: ADMIN_API,
+    changeOrigin: true,
+    pathRewrite: { "^/api/admin": "" },
+    onError: (err, req, res) => {
+      console.error("Error proxy admin:", err.message);
+      res.status(500).json({ error: "No se pudo conectar con la API de admin" });
+    },
+  })
+);
+
+// ----------------------
+// API LOGIN
+// ----------------------
+app.use(
+  "/api/login",
+  createProxyMiddleware({
+    target: LOGIN_API,
+    changeOrigin: true,
+    pathRewrite: { "^/api/login": "" },
+    onError: (err, req, res) => {
+      console.error("Error proxy login:", err.message);
+      res.status(500).json({ error: "No se pudo conectar con la API de login" });
+    },
+  })
+);
+
+// ----------------------
 // Ruta raíz de prueba
+// ----------------------
 app.get("/", (req, res) => {
   res.json({ message: "API Gateway activo 🚀" });
 });
 
-// Escuchar en el puerto definido en .env
+// ----------------------
+// Levantar el servidor
+// ----------------------
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`API Gateway corriendo en http://localhost:${PORT}`);
